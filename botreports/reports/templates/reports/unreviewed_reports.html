@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Нерассмотренные жалобы</h2>
+<ul>
+  {% for r in reports_unreviewed %}
+    <li>
+      <a href="{% url 'report_detail' r.id %}">
+        Жалоба #{{ r.id }} от {{ r.name }} ({{ r.date }})
+      </a>
+    </li>
+  {% empty %}
+    <li>Нет жалоб для рассмотрения</li>
+  {% endfor %}
+</ul>
+
+<h2>Рассмотренные жалобы</h2>
+<ul>
+  {% for r in reports_reviewed %}
+    <li>
+      <a href="{% url 'report_detail' r.id %}">
+        Жалоба #{{ r.id }} от {{ r.name }} ({{ r.date }})
+      </a>
+    </li>
+  {% empty %}
+    <li>Нет рассмотренных жалоб</li>
+  {% endfor %}
+</ul>
+
+<div style="margin-bottom: 20px;">
+  <form action="{% url 'delete_old_photos' %}" method="post" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit">Удалить фото старше 7 дней</button>
+  </form>
+
+  <form action="{% url 'delete_all_photos' %}" method="post" style="display:inline; margin-left: 10px;">
+    {% csrf_token %}
+    <button type="submit">Удалить все фото</button>
+  </form>
+</div>
+<div>
+  {% if messages %}
+      <ul>
+          {% for message in messages %}
+              <li>{{ message }}</li>
+          {% endfor %}
+      </ul>
+  {% endif %}
+</div>
+{% endblock %}

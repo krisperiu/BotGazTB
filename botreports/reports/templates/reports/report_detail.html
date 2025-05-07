@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Жалоба #{{ report.id }}</h2>
+<p><strong>Текст:</strong> {{ report.text_rep }}</p>
+<p><strong>Оценка:</strong> {{ report.ranked }}</p>
+
+<h3>Фото:</h3>
+{% for photo in report.photos.all %}
+  <img src="{{ MEDIA_URL }}{{ photo.photo_id }}.jpg" width="300">
+{% empty %}
+  <p>Нет фото</p>
+{% endfor %}
+
+<form method="post">
+  {% csrf_token %}
+  <label for="comment">Комментарий:</label><br>
+  <textarea name="comment" cols="40" rows="4">{{ report.comment_moder }}</textarea><br><br>
+  <button type="submit">Сохранить и отметить как рассмотренную</button>
+</form>
+<a href="{% url 'unreviewed_reports' %}">Назад</a>
+{% endblock %}
