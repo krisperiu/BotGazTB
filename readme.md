@@ -1,124 +1,169 @@
-# Проект Telegram-бота
 
-Этот проект представляет собой Telegram-бота, разработанного с использованием библиотеки Aiogram. Бот предназначен для взаимодействия с пользователями и модераторами, предоставляя функционал для оставления и управления отчетами о состоянии автобусов.
+# Deploy Django + Telegram Bot Project on Ubuntu Server
 
-## Стек технологий
+## 📦 Установка и настройка проекта
 
-- **Python**: Язык программирования для реализации бота.
-- **aiogram**: Библиотека для работы с Telegram Bot API.
-- **SQLAlchemy**: ORM для работы с базой данных PostgreSQL.
-- **PostgreSQL**: Система управления базами данных.
+### 1. Обновите систему
+```bash
+sudo apt update && sudo apt upgrade -y
+```
 
-## Файлы проекта
+### 2. Установите зависимости
+```bash
+sudo apt install python3-pip python3.12-venv python3-dev libpq-dev postgresql postgresql-contrib nginx git -y
+```
 
-### `run.py`
+### 3. Клонируйте проект
+```bash
+git clone https://github.com/krisperiu/BotGazTB.git
+cd BotGazTB
+```
 
-Основной скрипт для запуска Telegram-бота. Этот файл инициализирует бота и запускает его, используя библиотеку Aiogram.
+### 4. Настройка виртуального окружения
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+sudo apt install nginx -y
+```
 
-### `models.py`
+### 5. Настройка базы данных PostgreSQL
+```bash
+sudo -u postgres psql
+```
 
-Файл содержит определения моделей для SQLAlchemy, а также настройки для асинхронной работы с базой данных. Здесь описаны структуры таблиц базы данных и их связи.
+```sql
+CREATE DATABASE yourdbname;
+CREATE USER yourdbuser WITH PASSWORD 'yourpassword';
+ALTER ROLE yourdbuser SET client_encoding TO 'utf8';
+ALTER ROLE yourdbuser SET default_transaction_isolation TO 'read committed';
+ALTER ROLE yourdbuser SET timezone TO 'UTC';
+GRANT ALL PRIVILEGES ON DATABASE yourdbname TO yourdbuser;
+\q
+```
 
-### `requests.py`
+### 6. Настройка Django
+Создайте `.env` файл :
+```env
+TOKEN=7137085581:AAFWlcpjSZcC16At8k6f9x-wbnSFYALQ598
+SQLALCHEMY_URL=postgresql+asyncpg://USER:PASS@localhost/DBNAME
+DJANGO_SECRET_KEY = django-insecure-ykat_-7_t+$@uu@zg%$-jt_*o09yv0i15u(j0z-&y$dj(8m)!$
+DB_PASSWORD = 
+```
 
-Файл с асинхронными функциями для работы с базой данных, используя SQLAlchemy ORM. Содержит функции для управления данными отчетов, администраторов и фотографий.
+Примените миграции и соберите статику:
+```bash
+python manage.py migrate
+python manage.py collectstatic
+```
 
-### `handlers.py`
+### 7. Настройка Gunicorn
+Создайте сервисный файл:
+```bash
+sudo nano /etc/systemd/system/botreports.service
+```
 
-Основной скрипт для обработки сообщений и взаимодействия с пользователями. В этом файле определены обработчики команд и сообщений бота, а также логика для взаимодействия с пользователями и модераторами.
+```ini
+[Unit]
+Description=Gunicorn instance to serve Django botreports project
+After=network-online.target
+Wants=network-online.target
 
-### `keyboards.py`
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/BotGazTB/botreports
 
-Файл содержит код для создания различных клавиатур для Telegram-бота с помощью библиотеки Aiogram. Здесь определены клавиатуры для пользователей, модераторов и администраторов, включая поддержку пагинации.
+ExecStart=/home/BotGazTB/venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 1 \
+          --threads 1 \
+          --timeout 30 \
+          --bind unix:/home/BotGazTB/botreports/botreports.sock \
+          botreports.wsgi:application
 
-### `.env`
+Restart=on-failure
+RestartSec=5
 
-Файл для хранения конфиденциальной информации и настроек, таких как токены API и строки подключения к базе данных. Этот файл содержит переменные окружения, которые используются приложением для подключения к внешним сервисам.
+MemoryMax=130M
+CPUQuota=40%
 
-## Установка и настройка PostgreSQL на Ubuntu
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
-1. **Установите PostgreSQL:**
+[Install]
+WantedBy=multi-user.target
+```
 
-    Откройте терминал и выполните следующую команду:
+### 8. Настройка Telegram-бота
+Создайте `telegram-bot.service`:
+```bash
+sudo nano /etc/systemd/system/telegram-bot.service
+```
 
-    ```bash
-    sudo apt update
-    sudo apt install postgresql postgresql-contrib
-    ```
+```ini
+[Unit]
+Description=Telegram Bot
+After=network-online.target
+Wants=network-online.target
 
-2. **Запустите и проверьте статус службы PostgreSQL:**
+[Service]
+User=root
+WorkingDirectory=/home/youruser/project
+ExecStart=/home/youruser/project/venv/bin/python /home/youruser/project/run.py
 
-    ```bash
-    sudo systemctl start postgresql
-    sudo systemctl enable postgresql
-    sudo systemctl status postgresql
-    ```
+Restart=on-failure
+RestartSec=10s
 
-3. **Создайте пользователя и базу данных для вашего приложения:**
+MemoryMax=180M
+CPUQuota=40%
 
-    - Перейдите в консоль PostgreSQL от имени суперпользователя:
+[Install]
+WantedBy=multi-user.target
+```
 
-      ```bash
-      sudo -u postgres psql
-      ```
+Запустите сервисы:
+```bash
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable django telegram-bot
+sudo systemctl start django telegram-bot
+```
 
-    - Создайте нового пользователя:
+### 9. Настройка Nginx
+```bash
+sudo nano /etc/nginx/sites-available/botreports   
+```
 
-      ```sql
-      CREATE USER your_username WITH PASSWORD 'your_password';
-      ```
+```nginx
+server {
+    listen 80;
+    server_name 195.133.31.208;
 
-    - Создайте базу данных и назначьте владельца:
+    location / {
+        proxy_pass http://unix:/home/BotGazTB/botreports/botreports.sock;
+        include proxy_params;
+        proxy_redirect off;
+    }
 
-      ```sql
-      CREATE DATABASE your_database_name WITH OWNER your_username;
-      ```
+    location /static/ {
+        alias /home/BotGazTB/botreports/staticfiles/;
+    }
 
-    - Дайте пользователю все права на базу данных:
+    location /media/ {
+        alias /home/BotGazTB/botreports/media/;
+    }
+}
+```
 
-      ```sql
-      GRANT ALL PRIVILEGES ON DATABASE your_database_name TO your_username;
-      ```
+```bash
+sudo ln -s /etc/nginx/sites-available/botreports /etc/nginx/sites-enabled
+sudo nginx -t
+sudo systemctl restart nginx
+```
 
-    - Выйдите из консоли PostgreSQL:
+---
 
-      ```sql
-      \q
-      ```
-
-4. **Настройте соединение с базой данных в вашем проекте:**
-
-    Создайте файл `.env` в корне проекта и добавьте туда следующие переменные:
-
-    ```
-    TOKEN=ваш_токен_бота
-    SQLALCHEMY_URL=postgresql+asyncpg://your_username:your_password@localhost/your_database_name
-    ```
-
-## Установка и запуск
-
-1. **Клонируйте репозиторий:**
-
-    ```bash
-    git clone https://github.com/krisperiu/BotGaz.git
-    cd your-project
-    ```
-
-2. **Создайте и активируйте виртуальное окружение:**
-
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-
-3. **Установите зависимости:**
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4. **Запустите бота:**
-
-    ```bash
-    python run.py
-    ```
+##  Готово!

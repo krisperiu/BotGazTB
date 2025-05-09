@@ -34,5 +34,7 @@ class Photo(Base):
     photo_id: Mapped[str] = mapped_column(String(250))
 
 async def async_main():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    async with async_session() as session:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        await session.commit()
