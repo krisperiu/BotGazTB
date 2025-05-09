@@ -46,9 +46,9 @@ GRANT ALL PRIVILEGES ON DATABASE yourdbname TO yourdbuser;
 ### 6. Настройка Django
 Создайте `.env` файл :
 ```env
-TOKEN=7137085581:AAFWlcpjSZcC16At8k6f9x-wbnSFYALQ598
+TOKEN=
 SQLALCHEMY_URL=postgresql+asyncpg://USER:PASS@localhost/DBNAME
-DJANGO_SECRET_KEY = django-insecure-ykat_-7_t+$@uu@zg%$-jt_*o09yv0i15u(j0z-&y$dj(8m)!$
+DJANGO_SECRET_KEY = 
 DB_PASSWORD = 
 ```
 
